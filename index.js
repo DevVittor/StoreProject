@@ -12,6 +12,7 @@ const multer = require('multer');
 const sharp = require("sharp");
 const fs = require("fs");
 const path = require('path');
+const removeAccents = require('remove-accents');
 sharp.cache(false);
 // Configurar o módulo Multer para o upload de arquivos
 const storage = multer.diskStorage({
@@ -30,22 +31,22 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended:false}));
 app.use(cors());
 
-app.get("/",async(req,res)=>{
-    
+app.get("/", async (req, res) => {
+    const ordem = req.query.ordem; // Acesse 'ordem' dos parâmetros de consulta
     try {
-        // Consulta os dados do banco de dados
-        const cardProduct = await Product.findAll({
-            attributes: ['id','logo','marca','preco']
-        });
-        const imageLocal = "http://localhost:5000/upload/";
-        // Envie os dados de volta como resposta
-        res.status(200).json({ resultado: cardProduct,localImg:imageLocal });
-      } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: "Erro ao buscar os dados do banco" });
-      }
-
-});
+      // Consulta os dados do banco de dados
+      const cardProduct = await Product.findAll({
+        attributes: ['id', 'logo', 'marca', 'preco'],
+        order: [['id', ordem]]
+      });
+      const imageLocal = "http://localhost:5000/upload/";
+      // Envie os dados de volta como resposta
+      res.status(200).json({ resultado: cardProduct, localImg: imageLocal });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Erro ao buscar os dados do banco" });
+    }
+});  
 
 app.post('/cadastrar',async (req,res)=>{
     const {nome,email,senha}=req.body;
@@ -81,13 +82,15 @@ app.post('/cadastrar',async (req,res)=>{
 
 app.post('/produto', upload.single("logo"), async (req, res) => {
         if (req.file) {
-            const imgName = req.file.filename;
-            const convertedImgName = imgName.replace(/\.[^.]+$/, ".webp");
-            await sharp(`upload/${imgName}`).resize({width:300,fit:'cover',position:'center'}).toFile(`upload/${convertedImgName}`);
-            fs.unlinkSync(`upload/${imgName}`); 
-            const localImg = convertedImgName;
-
             const { marca, preco } = req.body;
+            const imgName = req.file.filename;
+            // Remove acentos e mantém apenas caracteres alfanuméricos na marca
+            const nomeArquivo = removeAccents(marca).replace(/[^a-zA-Z0-9]+/g, '_');
+             // Adiciona um carimbo de data e a extensão .webp ao nome do arquivo
+            const convertedImgName = `${nomeArquivo}_${Date.now()}.webp`;
+            await sharp(`upload/${imgName}`).resize({ width: 300, fit: 'cover', position: 'center' }).toFile(`upload/${convertedImgName}`);
+            fs.unlinkSync(`upload/${imgName}`);
+            const localImg = convertedImgName;
             if (localImg && marca && preco) {
                 const newProduct = await Product.create({
                     logo: localImg,
@@ -141,6 +144,16 @@ app.post('/acessar',async (req,res)=>{
         console.log("É preciso ter um email e uma senha")
     }
 });
+app.get("/:id",async(req,res)=>{
+    const id = req.params.id;
+    const profileUser = await Product.findAll({
+        attributes: ['id', 'logo', 'marca', 'preco'],
+        where:{
+            id:id
+        }
+    })
+    res.status(200).json({infoData: profileUser});
+})
 
 const port = process.env.PORT || 3000;
 app.listen(port,()=>{
