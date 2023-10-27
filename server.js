@@ -1,8 +1,8 @@
 require('dotenv').config();
 require('./database/conn');
 const express = require('express');
+const stripe = require("stripe")(process.env.STRIPE);
 const app = express();
-const bodyParser = require('body-parser');
 const bcrypt = require('bcrypt');
 const cors = require('cors');
 const Client = require('./models/Client');
@@ -12,7 +12,9 @@ const multer = require('multer');
 const sharp = require("sharp");
 const fs = require("fs");
 const path = require('path');
+const bodyParser = require("body-parser");
 const removeAccents = require('remove-accents');
+const port = process.env.PORT || 3000;
 sharp.cache(false);
 // Configurar o módulo Multer para o upload de arquivos
 const storage = multer.diskStorage({
@@ -39,7 +41,7 @@ app.get("/", async (req, res) => {
             attributes: ['id', 'logo', 'marca', 'preco'],
             order: [['id', ordem]]
         });
-        const imageLocal = "http://localhost:5000/upload/";
+        const imageLocal = "http://localhost:8080/upload/";
         // Envie os dados de volta como resposta
         res.status(200).json({ resultado: cardProduct, localImg: imageLocal });
     } catch (error) {
@@ -153,9 +155,36 @@ app.get("/:id", async (req, res) => {
         }
     })
     res.status(200).json({ infoData: profileUser });
-})
+});
 
-const port = process.env.PORT || 3000;
+//Assinaturas
+//const idUser = 2;
+app.get("/success", (req, res) => {
+    res.json({ id: idUser });
+});
+app.get("/cancel", (req, res) => {
+    res.send("Cancelada");
+});
+let idUser = 2;
+app.post("/checkstripe", async (req, res) => {
+    const { priceId } = req.body;
+    console.log("Corpo da solicitação recebida:", req.body);
+    const session = await stripe.checkout.sessions.create({
+        mode: "subscription",
+        line_items: [
+            {
+                price: priceId,
+                quantity: 1,
+            },
+        ],
+        success_url: `http://localhost:5173/success?session_id=${idUser}`,
+        cancel_url: `http://localhost:5173/cancel`,
+    });
+    res.status(200).json({ url: session.url });
+});
+
+//Fim da Assinatura
+
 app.listen(port, () => {
     console.log(`Servidor rodando na porta ${port}`);
 });
