@@ -11,7 +11,6 @@ const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const sharp = require("sharp");
 const fs = require("fs");
-const path = require('path');
 const bodyParser = require("body-parser");
 const removeAccents = require('remove-accents');
 const port = process.env.PORT || 3000;
@@ -108,7 +107,6 @@ app.post('/produto', upload.single("logo"), async (req, res) => {
         res.status(400).json({ error: "Nenhum arquivo foi enviado" });
     }
 });
-
 
 app.post('/acessar', async (req, res) => {
     const { email, senha } = req.body;
