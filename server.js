@@ -14,6 +14,7 @@ const fs = require("fs");
 const bodyParser = require("body-parser");
 const removeAccents = require('remove-accents');
 const port = process.env.PORT || 3000;
+//const Usuario = require("./models/Usuario");
 sharp.cache(false);
 // Configurar o módulo Multer para o upload de arquivos
 const storage = multer.diskStorage({
@@ -29,7 +30,7 @@ const keyPrivate = process.env.TOKENPRIVATE;
 
 app.use('/upload', express.static('upload'));
 app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cors());
 
 app.get("/", async (req, res) => {
