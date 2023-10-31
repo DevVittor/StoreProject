@@ -202,9 +202,9 @@ app.post("/checkstripe", async (req, res) => {
 });
 
 //Fim da Assinatura
-const database = "abrime";
-const user = "root";
-const password = "mint";
+const database = process.env.DB_DATABASE;
+const user = process.env.DB_USER;
+const password = process.env.DB_PASSWORD;
 
 mongoose.connect(`mongodb+srv://${user}:${password}@cluster0.hjnfb0o.mongodb.net/${database}?retryWrites=true&w=majority`)
     .then(() => {
