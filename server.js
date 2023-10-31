@@ -3,6 +3,7 @@ require('./database/conn');
 const express = require('express');
 const stripe = require("stripe")(process.env.STRIPE);
 const app = express();
+const mongoose = require("mongoose");
 const bcrypt = require('bcrypt');
 const cors = require('cors');
 const Client = require('./models/Client');
@@ -14,7 +15,7 @@ const fs = require("fs");
 const bodyParser = require("body-parser");
 const removeAccents = require('remove-accents');
 const port = process.env.PORT || 3000;
-//const Usuario = require("./models/Usuario");
+const Usuario = require("./models/Usuario");
 sharp.cache(false);
 // Configurar o módulo Multer para o upload de arquivos
 const storage = multer.diskStorage({
@@ -156,6 +157,24 @@ app.get("/:id", async (req, res) => {
     res.status(200).json({ infoData: profileUser });
 });
 
+app.post("/usuarios", async (req, res) => {
+    const { nome, sobrenome, email } = req.body;
+
+    const pessoa = {
+        nome,
+        sobrenome,
+        email
+    }
+
+    try {
+        await Usuario.create(pessoa);
+        console.log("Pessoa Criada!");
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: error });
+    }
+});
+
 //Assinaturas
 //const idUser = 2;
 app.get("/success", (req, res) => {
@@ -183,7 +202,14 @@ app.post("/checkstripe", async (req, res) => {
 });
 
 //Fim da Assinatura
+const database = "abrime";
+const user = "root";
+const password = "mint";
 
-app.listen(port, () => {
-    console.log(`Servidor rodando na porta ${port}`);
-});
+mongoose.connect(`mongodb+srv://${user}:${password}@cluster0.hjnfb0o.mongodb.net/${database}?retryWrites=true&w=majority`)
+    .then(() => {
+        app.listen(port, () => {
+            console.log(`Servidor rodando na porta ${port} e servidor conectado`);
+        });
+    })
+    .catch(error => console.error(`Não foi possível conectar ao banco de dados e nem ao servidor por causa do error: ${error}`));

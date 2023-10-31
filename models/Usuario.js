@@ -1,5 +1,7 @@
 const mongoose = require("mongoose");
 
+
+
 const LocalEncontroSchema = new mongoose.Schema({
     estado: String,
     cidade: String,
@@ -67,6 +69,14 @@ const PelosSchema = new mongoose.Schema({
     peito: Boolean
 });
 
+const FormasPagamentoSchema = new mongoose.Schema({
+    pix: Boolean,
+    dinheiro: Boolean,
+    cartaoCredito: Boolean,
+    cartaoDebito: Boolean,
+    transferenciaBancaria: Boolean
+});
+
 const ValidadeVantagemSchema = new mongoose.Schema({
     validadeDestaque: Date,
     validadeVerificada: Date,
@@ -86,6 +96,11 @@ const SocialMediaSchema = new mongoose.Schema({
     telegram: String,
     onlyfans: String,
     Privacy: String
+});
+
+const TiposServicoSchema = new mongoose.Schema({
+    servicos: [String],
+    especiais: [String]
 });
 
 const PrecoAtendimentoSchema = new mongoose.Schema({
@@ -112,6 +127,11 @@ const EnderecoSchema = new mongoose.Schema({
     cep: String
 });
 
+const FotoVideoSchema = new mongoose.Schema({
+    fotos: [String],
+    video: [String]
+});
+
 const Usuario = mongoose.model("usuarios", {
     nome: String,
     sobrenome: String,
@@ -120,22 +140,18 @@ const Usuario = mongoose.model("usuarios", {
     celular: String,
     whatsapp: String,
     dataConta: Date,
-    fotos: [String],
-    videos: [String],
+    galeria: FotoVideoSchema,
     endereco: EnderecoSchema,
     tipoConta: TipoContaSchema,
     preco: PrecoAtendimentoSchema,
-    servicos: [String],
-    servicosEspeciais: [String],
+    listaServicos: TiposServicoSchema,
     redeSociais: SocialMediaSchema,
     vantagens: VantagensSchema,
     validadeVantagem: ValidadeVantagemSchema,
     corpo: CorpoSchema,
     pelos: PelosSchema,
     descricao: String,
-    formasPagamento: [String],
-    moedasAceitas: [String],
-    idioma: [String],
+    formasPagamento: FormasPagamentoSchema,
     viagens: ViagensSchema,
     gravarVideo: Boolean,
     tirarFoto: Boolean,
