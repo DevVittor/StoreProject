@@ -206,6 +206,11 @@ const database = process.env.DB_DATABASE;
 const user = process.env.DB_USER;
 const password = process.env.DB_PASSWORD;
 
+//MongoDB COMPASS
+//mongodb+srv://root:<password>@cluster0.hjnfb0o.mongodb.net/
+//mongodb+srv://root:mint@localhost/?authMechanism=DEFAULT&authSource=abrime
+//MongDB Atlas
+//mongodb+srv://${user}:${password}@cluster0.hjnfb0o.mongodb.net/${database}?retryWrites=true&w=majority
 mongoose.connect(`mongodb+srv://${user}:${password}@cluster0.hjnfb0o.mongodb.net/${database}?retryWrites=true&w=majority`)
     .then(() => {
         app.listen(port, () => {

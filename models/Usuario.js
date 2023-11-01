@@ -1,7 +1,5 @@
 const mongoose = require("mongoose");
 
-
-
 const LocalEncontroSchema = new mongoose.Schema({
     estado: String,
     cidade: String,
