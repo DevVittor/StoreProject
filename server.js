@@ -3,11 +3,11 @@ require('./database/conn');
 const express = require('express');
 const stripe = require("stripe")(process.env.STRIPE);
 const app = express();
-const mongoose = require("mongoose");
 const bcrypt = require('bcrypt');
 const cors = require('cors');
 const Client = require('./models/Client');
 const Product = require('./models/Products');
+const Details = require("./models/Details");
 const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const sharp = require("sharp");
@@ -15,7 +15,6 @@ const fs = require("fs");
 const bodyParser = require("body-parser");
 const removeAccents = require('remove-accents');
 const port = process.env.PORT || 3000;
-const Usuario = require("./models/Usuario");
 sharp.cache(false);
 // Configurar o módulo Multer para o upload de arquivos
 const storage = multer.diskStorage({
@@ -28,6 +27,29 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 const keyPrivate = process.env.TOKENPRIVATE;
+
+function auth(req, res, next) {
+    const authToken = req.headers["authorization"];
+    if (authToken != undefined) {
+        const BearerToken = authToken.split(" ");
+        const token = BearerToken[1];
+        console.log("Token extraído:", token);
+        jwt.verify(token, keyPrivate, (error, data) => {
+            if (error) {
+                res.status(401).json({
+                    error: `Token está Inválido! devido ao error: ${error}`,
+                });
+            } else {
+                req.token = token;
+                req.useId = { id: data.id, email: data.email };
+                //res.status(200).json({ infoData: data });
+                next();
+            }
+        });
+    } else {
+        res.status(401).json({ error: "Token Inválido" });
+    }
+}
 
 app.use('/upload', express.static('upload'));
 app.use(bodyParser.json());
@@ -61,7 +83,7 @@ app.post('/cadastrar', async (req, res) => {
     if (!emailDuplicado) {
         if (senha) {
             const salt = bcrypt.genSaltSync(16);
-            const hash = bcrypt.hashSync(senha, salt)
+            const hash = bcrypt.hashSync(senha, salt);
             if (nome && hash) {
                 const newUser = await Client.create({
                     nome: nome,
@@ -120,7 +142,7 @@ app.post('/acessar', async (req, res) => {
         });
         if (checkDados && senha) {
             const hash = checkDados.senha;
-            const checkHash = bcrypt.compareSync(senha, hash);
+            const checkHash = bcrypt.compareSync(senha, hash)
             if (checkHash) {
                 jwt.sign(
                     { id: checkDados.id, email: checkDados.email },
@@ -129,7 +151,7 @@ app.post('/acessar', async (req, res) => {
                     (error, token) => {
                         error
                             ? res.status(400).json({ alert: "Falha Interna" })
-                            : res.status(200).json({ token: token });
+                            : res.status(200).json({ token: token, useId: checkDados.id });
                     }
                 )
                 console.log(`Login feito com sucesso!`);
@@ -146,6 +168,15 @@ app.post('/acessar', async (req, res) => {
         console.log("É preciso ter um email e uma senha")
     }
 });
+
+app.post("/criarPerfil", async (req, res) => {
+
+
+    const userId = req.body.userId;
+    res.json({ resposta: userId });
+
+});
+
 app.get("/:id", async (req, res) => {
     const id = req.params.id;
     const profileUser = await Product.findAll({
@@ -156,27 +187,6 @@ app.get("/:id", async (req, res) => {
     })
     res.status(200).json({ infoData: profileUser });
 });
-
-app.post("/usuarios", async (req, res) => {
-    const { nome, sobrenome, email } = req.body;
-
-    const pessoa = {
-        nome,
-        sobrenome,
-        email
-    }
-
-    try {
-        await Usuario.create(pessoa);
-        console.log("Pessoa Criada!");
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: error });
-    }
-});
-
-//Assinaturas
-//const idUser = 2;
 app.get("/success", (req, res) => {
     res.json({ id: idUser });
 });
@@ -200,21 +210,6 @@ app.post("/checkstripe", async (req, res) => {
     });
     res.status(200).json({ url: session.url });
 });
-
-//Fim da Assinatura
-const database = process.env.DB_DATABASE;
-const user = process.env.DB_USER;
-const password = process.env.DB_PASSWORD;
-
-//MongoDB COMPASS
-//mongodb+srv://root:<password>@cluster0.hjnfb0o.mongodb.net/
-//mongodb+srv://root:mint@localhost/?authMechanism=DEFAULT&authSource=abrime
-//MongDB Atlas
-//mongodb+srv://${user}:${password}@cluster0.hjnfb0o.mongodb.net/${database}?retryWrites=true&w=majority
-mongoose.connect(`mongodb+srv://${user}:${password}@cluster0.hjnfb0o.mongodb.net/${database}?retryWrites=true&w=majority`)
-    .then(() => {
-        app.listen(port, () => {
-            console.log(`Servidor rodando na porta ${port} e servidor conectado`);
-        });
-    })
-    .catch(error => console.error(`Não foi possível conectar ao banco de dados e nem ao servidor por causa do error: ${error}`));
+app.listen(port, () => {
+    console.log(`Servidor rodando na porta ${port} e servidor conectado`);
+});
