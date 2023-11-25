@@ -59,7 +59,7 @@ const CorpoSchema = new mongoose.Schema({
 
 const PelosSchema = new mongoose.Schema({
     anus: Boolean,
-    pubis: Boolean,
+    pubis: Boolean,//genitálias unisex
     axila: Boolean,
     pernas: Boolean,
     bracos: Boolean,

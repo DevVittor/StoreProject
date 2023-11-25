@@ -4,19 +4,24 @@ const express = require('express');
 const stripe = require("stripe")(process.env.STRIPE);
 const app = express();
 const bcrypt = require('bcrypt');
+const compression = require("compression");
 const cors = require('cors');
 const Client = require('./models/Client');
 const Product = require('./models/Products');
 const Details = require("./models/Details");
 const jwt = require('jsonwebtoken');
-const multer = require('multer');
+//const multer = require('multer');
+const upload = require("./config/multer");
 const sharp = require("sharp");
 const fs = require("fs");
 const bodyParser = require("body-parser");
 const removeAccents = require('remove-accents');
+const Jimp = require("jimp");
+
 const port = process.env.PORT || 3000;
-sharp.cache(false);
-// Configurar o módulo Multer para o upload de arquivos
+const keyPrivate = process.env.TOKENPRIVATE;
+
+/*sharp.cache(false);
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
         cb(null, "upload/");
@@ -25,47 +30,23 @@ const storage = multer.diskStorage({
         cb(null, file.originalname);
     },
 });
-const upload = multer({ storage: storage });
-const keyPrivate = process.env.TOKENPRIVATE;
-
-function auth(req, res, next) {
-    const authToken = req.headers["authorization"];
-    if (authToken != undefined) {
-        const BearerToken = authToken.split(" ");
-        const token = BearerToken[1];
-        console.log("Token extraído:", token);
-        jwt.verify(token, keyPrivate, (error, data) => {
-            if (error) {
-                res.status(401).json({
-                    error: `Token está Inválido! devido ao error: ${error}`,
-                });
-            } else {
-                req.token = token;
-                req.useId = { id: data.id, email: data.email };
-                //res.status(200).json({ infoData: data });
-                next();
-            }
-        });
-    } else {
-        res.status(401).json({ error: "Token Inválido" });
-    }
-}
+const upload = multer({ storage: storage });*/
 
 app.use('/upload', express.static('upload'));
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json({ limit: 1.5 * 1024 * 1024 }));
+app.use(bodyParser.urlencoded({ extended: false, limit: 1.5 * 1024 * 1024 }));
+app.use(compression());
 app.use(cors());
+app.disable("x-powered-by");
 
 app.get("/", async (req, res) => {
-    const ordem = req.query.ordem; // Acesse 'ordem' dos parâmetros de consulta
+    const ordem = req.query.ordem;
     try {
-        // Consulta os dados do banco de dados
         const cardProduct = await Product.findAll({
-            attributes: ['id', 'logo', 'marca', 'preco'],
+            attributes: ['id', 'avatar', 'nome', 'preco'],
             order: [['id', ordem]]
         });
         const imageLocal = "http://localhost:8080/upload/";
-        // Envie os dados de volta como resposta
         res.status(200).json({ resultado: cardProduct, localImg: imageLocal });
     } catch (error) {
         console.error(error);
@@ -90,8 +71,29 @@ app.post('/cadastrar', async (req, res) => {
                     email: email,
                     senha: hash
                 });
-                res.status(201).json({ client: newUser });
-                console.log("Usuário criado com sucesso!");
+                const checkDados = await Client.findOne({
+                    where: {
+                        email: email
+                    }
+                })
+                if (checkDados) {
+                    jwt.sign(
+                        { id: checkDados.id, email: checkDados.email },
+                        keyPrivate,
+                        { expiresIn: "48h" },
+                        (error, token) => {
+                            if (error) {
+                                console.error("Erro ao criar token:", error);
+                                res.status(500).json({ alert: "Falha Interna" });
+                            } else {
+                                console.log("Token foi criado");
+                                res.status(201).json({ token: token, user: newUser });
+                            }
+                        }
+                    );
+                } else {
+                    res.status(500).json({ alert: "Erro ao criar usuário" });
+                }
             } else {
                 res.status(301).json({ error: `Não foi possível cadastrar o usuário ${nome}` });
             }
@@ -105,22 +107,77 @@ app.post('/cadastrar', async (req, res) => {
     }
 });
 
-app.post('/produto', upload.single("logo"), async (req, res) => {
+app.get('/produto/:id', async (req, res) => {
+    const productId = req.params.id;
+
+    try {
+        // Lógica para buscar o produto no banco de dados usando o ID fornecido
+        const product = await Product.findByPk(productId);
+
+        if (!product) {
+            return res.status(404).json({ error: 'Produto não encontrado' });
+        }
+
+        // Retorna o produto encontrado
+        res.status(200).json({ product });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Erro ao buscar o produto' });
+    }
+});
+
+app.post('/produto', upload.single("avatar"), async (req, res) => {
     if (req.file) {
-        const { marca, preco } = req.body;
+        const { idClient, nome, preco, idade, estado, cidade, genero,
+            altura, peso, descricao, pix, dinheiro, cartaoCredito, cartaoDebito } = req.body;
         const imgName = req.file.filename;
-        // Remove acentos e mantém apenas caracteres alfanuméricos na marca
-        const nomeArquivo = removeAccents(marca).replace(/[^a-zA-Z0-9]+/g, '_');
+        //Inicio do Jimp
+        const imagem = await Jimp.read(`upload/${imgName}`);
+        const marcaDagua = await Jimp.read(`public/marca.png`);
+        marcaDagua.opacity(1); // Ajuste a opacidade conforme necessário
+        marcaDagua.resize(256, 256);
+        // Obter as dimensões da imagem principal e da marca d'água
+        const imagemWidth = imagem.bitmap.width;
+        const imagemHeight = imagem.bitmap.height;
+        const marcaWidth = marcaDagua.bitmap.width;
+        const marcaHeight = marcaDagua.bitmap.height;
+
+        // Definir as coordenadas para o canto inferior direito
+        const coordenadaX = imagemWidth - marcaWidth - 10; // Ajuste os valores de margem conforme desejado
+        const coordenadaY = imagemHeight - marcaHeight - 10; // Ajuste os valores de margem conforme desejado
+
+        imagem.composite(marcaDagua, coordenadaX, coordenadaY, {
+            mode: Jimp.BLEND_SOURCE_OVER,
+        });
+        await imagem.writeAsync(`upload/${imgName}`);
+        //Fim do Jimp
+        // Remove acentos e mantém apenas caracteres alfanuméricos no nome
+        const nomeArquivo = removeAccents(nome).replace(/[^a-zA-Z0-9]+/g, '_');
         // Adiciona um carimbo de data e a extensão .webp ao nome do arquivo
         const convertedImgName = `${nomeArquivo}_${Date.now()}.webp`;
-        await sharp(`upload/${imgName}`).resize({ width: 300, fit: 'cover', position: 'center' }).toFile(`upload/${convertedImgName}`);
+        await sharp(`upload/${imgName}`).resize({ width: 600, fit: 'cover', position: 'center' }).toFile(`upload/${convertedImgName}`);
         fs.unlinkSync(`upload/${imgName}`);
         const localImg = convertedImgName;
-        if (localImg && marca && preco) {
+
+        if (localImg && idClient && nome && preco && idade && estado && cidade
+            && genero && altura && peso && descricao && pix && dinheiro && cartaoCredito
+            && cartaoDebito) {
             const newProduct = await Product.create({
-                logo: localImg,
-                marca: marca,
-                preco: preco
+                avatar: localImg,
+                id: idClient,
+                nome: nome,
+                preco: preco,
+                idade: idade,
+                estado: estado,
+                cidade: cidade,
+                genero: genero,
+                altura: altura,
+                peso: peso,
+                descricao: descricao,
+                pix: pix,
+                dinheiro: dinheiro,
+                cartaoCredito: cartaoCredito,
+                cartaoDebito: cartaoDebito
             });
             console.log('Produto criado com sucesso!');
             res.status(200).json({ product: newProduct });
@@ -170,17 +227,16 @@ app.post('/acessar', async (req, res) => {
 });
 
 app.post("/criarPerfil", async (req, res) => {
-
-
     const userId = req.body.userId;
     res.json({ resposta: userId });
-
 });
 
 app.get("/:id", async (req, res) => {
     const id = req.params.id;
     const profileUser = await Product.findAll({
-        attributes: ['id', 'logo', 'marca', 'preco'],
+        attributes: ['id', 'avatar', 'nome', 'preco', 'idade', 'estado', 'cidade',
+            'genero', 'altura', 'peso', 'descricao', 'pix', 'dinheiro', 'cartaoCredito',
+            'cartaoDebito'],
         where: {
             id: id
         }
