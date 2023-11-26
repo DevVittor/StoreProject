@@ -8,7 +8,8 @@ const compression = require("compression");
 const cors = require('cors');
 const Client = require('./models/Client');
 const Product = require('./models/Products');
-const Details = require("./models/Details");
+//const Details = require("./models/Details");
+//const Servicos = require("./models/Servicos");
 const jwt = require('jsonwebtoken');
 //const multer = require('multer');
 const upload = require("./config/multer");
@@ -129,8 +130,13 @@ app.get('/produto/:id', async (req, res) => {
 app.post('/produto', upload.single("avatar"), async (req, res) => {
     if (req.file) {
         const { idClient, nome, preco, idade, estado, cidade, genero,
-            altura, peso, descricao, pix, dinheiro, cartaoCredito, cartaoDebito } = req.body;
+            altura, peso, descricao, pix, dinheiro, cartaoCredito,
+            cartaoDebito, anal, boquete, beijo, massagem, chuvaDourada } = req.body;
         const imgName = req.file.filename;
+
+        const servicosNormaisObj = { anal, boquete, beijo };
+        const servicosEspeciaisObj = { massagem, chuvaDourada };
+
         //Inicio do Jimp
         const imagem = await Jimp.read(`upload/${imgName}`);
         const marcaDagua = await Jimp.read(`public/marca.png`);
@@ -161,7 +167,7 @@ app.post('/produto', upload.single("avatar"), async (req, res) => {
 
         if (localImg && idClient && nome && preco && idade && estado && cidade
             && genero && altura && peso && descricao && pix && dinheiro && cartaoCredito
-            && cartaoDebito) {
+            && cartaoDebito && anal && boquete && beijo && massagem && chuvaDourada) {
             const newProduct = await Product.create({
                 avatar: localImg,
                 id: idClient,
@@ -177,7 +183,9 @@ app.post('/produto', upload.single("avatar"), async (req, res) => {
                 pix: pix,
                 dinheiro: dinheiro,
                 cartaoCredito: cartaoCredito,
-                cartaoDebito: cartaoDebito
+                cartaoDebito: cartaoDebito,
+                servicosNormais: servicosNormaisObj,
+                servicosEspeciais: servicosEspeciaisObj
             });
             console.log('Produto criado com sucesso!');
             res.status(200).json({ product: newProduct });
@@ -236,7 +244,8 @@ app.get("/:id", async (req, res) => {
     const profileUser = await Product.findAll({
         attributes: ['id', 'avatar', 'nome', 'preco', 'idade', 'estado', 'cidade',
             'genero', 'altura', 'peso', 'descricao', 'pix', 'dinheiro', 'cartaoCredito',
-            'cartaoDebito'],
+            'cartaoDebito', 'servicosNormais', 'servicosEspeciais'],
+
         where: {
             id: id
         }

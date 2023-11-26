@@ -68,6 +68,16 @@ const Product = conn.define("products", {
     cartaoDebito: {
         type: Sequelize.BOOLEAN,
         allowNull: false,
+    },
+    servicosNormais: {
+        type: Sequelize.JSON,
+        allowNull: true, // Permitir valores nulos se necessário
+        defaultValue: {} // Definir um valor padrão se apropriado
+    },
+    servicosEspeciais: {
+        type: Sequelize.JSON,
+        allowNull: true, // Permitir valores nulos se necessário
+        defaultValue: {} // Definir um valor padrão se apropriado
     }
 })
 Product.belongsTo(Client, { foreignKey: 'id' });
