@@ -1,6 +1,6 @@
 const Sequelize = require("sequelize");
 const conn = require("../database/conn");
-const Client = require("../models/Client");
+//const Client = require("../models/Client");
 
 const Details = conn.define("details", {
     altura: {
@@ -20,8 +20,8 @@ const Details = conn.define("details", {
         allowNull: true
     }
 });
-Details.belongsTo(Client);
-Details.sync()
+//Details.belongsTo(Client);
+Details.sync({ force: true })
     .then(() => {
         console.log("Tabela Details Criada com sucesso!")
     }).catch(error => console.error(`Não foi possível criar a tabela Details por causa do error ${error}`));

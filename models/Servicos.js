@@ -12,8 +12,8 @@ const Servicos = conn.define("servicos", {
         allowNull: false
     }
 });
-Servicos.belongsTo(Client, { foreignKey: 'id' });
-Servicos.sync()
+//Servicos.belongsTo(Client, { foreignKey: 'id' });
+Servicos.sync({ force: true })
     .then(() => {
         console.log(`Tabela serviços foi criada com sucesso!`)
     }).catch(error => console.error(`Não foi possível criar a tabela serviços por causa do error: ${error}`));

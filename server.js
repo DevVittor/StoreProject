@@ -8,16 +8,19 @@ const compression = require("compression");
 const cors = require('cors');
 const Client = require('./models/Client');
 const Product = require('./models/Products');
-//const Details = require("./models/Details");
-//const Servicos = require("./models/Servicos");
 const jwt = require('jsonwebtoken');
-//const multer = require('multer');
+const multer = require('multer');
 const upload = require("./config/multer");
 const sharp = require("sharp");
 const fs = require("fs");
 const bodyParser = require("body-parser");
 const removeAccents = require('remove-accents');
-const Jimp = require("jimp");
+//const Jimp = require("jimp");
+const { Op } = require('sequelize');
+
+//const productRoutes = require("./routes/ProductRoutes");
+
+//app.use("/produto", productRoutes);
 
 const port = process.env.PORT || 3000;
 const keyPrivate = process.env.TOKENPRIVATE;
@@ -34,17 +37,34 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });*/
 
 app.use('/upload', express.static('upload'));
-app.use(bodyParser.json({ limit: 1.5 * 1024 * 1024 }));
-app.use(bodyParser.urlencoded({ extended: false, limit: 1.5 * 1024 * 1024 }));
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: false }));
 app.use(compression());
 app.use(cors());
 app.disable("x-powered-by");
 
 app.get("/", async (req, res) => {
     const ordem = req.query.ordem;
+    const busca = req.query.inputBusca;
     try {
+        let whereClause = {}; // Inicializa um objeto vazio para a cláusula WHERE
+
+        // Se houver uma busca por nome, configura a cláusula WHERE para filtrar pelo nome
+        if (busca && busca !== 'undefined' && busca.trim() !== "") {
+            whereClause = {
+                [Op.or]: [
+                    { nome: { [Op.like]: `%${busca}%` } },
+                    { preco: { [Op.like]: `%${busca}%` } },
+                    { estado: { [Op.like]: `%${busca}%` } }
+                ]
+            };
+        } else {
+            whereClause = {};
+        }
+
         const cardProduct = await Product.findAll({
-            attributes: ['id', 'avatar', 'nome', 'preco'],
+            attributes: ['id', 'avatar', 'nome', 'preco', 'estado', 'cidade', 'genero'],
+            where: whereClause, // Aplica a cláusula WHERE na consulta
             order: [['id', ordem]]
         });
         const imageLocal = "http://localhost:8080/upload/";
@@ -87,8 +107,8 @@ app.post('/cadastrar', async (req, res) => {
                                 console.error("Erro ao criar token:", error);
                                 res.status(500).json({ alert: "Falha Interna" });
                             } else {
-                                console.log("Token foi criado");
-                                res.status(201).json({ token: token, user: newUser });
+                                console.log("Token foi criado", checkDados.id);
+                                res.status(201).json({ token: token, user: newUser, useId: checkDados.id });
                             }
                         }
                     );
@@ -128,6 +148,76 @@ app.get('/produto/:id', async (req, res) => {
 });
 
 app.post('/produto', upload.single("avatar"), async (req, res) => {
+    if (req.file) {
+        const { idClient, nome, preco, idade, estado, cidade, genero,
+            altura, peso, descricao, pix, dinheiro, cartaoCredito,
+            cartaoDebito, anal, boquete, beijo, massagem, chuvaDourada } = req.body;
+        const imgName = req.file.filename;
+
+        const servicosNormaisObj = { anal, boquete, beijo };
+        const servicosEspeciaisObj = { massagem, chuvaDourada };
+
+        /*//Inicio do Jimp
+        const imagem = await Jimp.read(`upload/${imgName}`);
+        const marcaDagua = await Jimp.read(`public/marca.png`);
+        marcaDagua.opacity(1); // Ajuste a opacidade conforme necessário
+        marcaDagua.resize(256, 256);
+        // Obter as dimensões da imagem principal e da marca d'água
+        const imagemWidth = imagem.bitmap.width;
+        const imagemHeight = imagem.bitmap.height;
+        const marcaWidth = marcaDagua.bitmap.width;
+        const marcaHeight = marcaDagua.bitmap.height;
+
+        // Definir as coordenadas para o canto inferior direito
+        const coordenadaX = imagemWidth - marcaWidth - 10; // Ajuste os valores de margem conforme desejado
+        const coordenadaY = imagemHeight - marcaHeight - 10; // Ajuste os valores de margem conforme desejado
+
+        imagem.composite(marcaDagua, coordenadaX, coordenadaY, {
+            mode: Jimp.BLEND_SOURCE_OVER,
+        });
+        await imagem.writeAsync(`upload/${imgName}`);*/
+        //Fim do Jimp
+        // Remove acentos e mantém apenas caracteres alfanuméricos no nome
+        const nomeArquivo = removeAccents(nome).replace(/[^a-zA-Z0-9]+/g, '_');
+        // Adiciona um carimbo de data e a extensão .webp ao nome do arquivo
+        const convertedImgName = `${nomeArquivo}_${Date.now()}.webp`;
+        await sharp(`upload/${imgName}`).resize({ width: 600, fit: 'cover', position: 'center' }).toFile(`upload/${convertedImgName}`);
+        fs.unlinkSync(`upload/${imgName}`);
+        const localImg = convertedImgName;
+
+        if (localImg && idClient && nome && preco && idade && estado && cidade
+            && genero && altura && peso && descricao && pix && dinheiro && cartaoCredito
+            && cartaoDebito && anal && boquete && beijo && massagem && chuvaDourada) {
+            const newProduct = await Product.create({
+                avatar: localImg,
+                id: idClient,
+                nome: nome,
+                preco: preco,
+                idade: idade,
+                estado: estado,
+                cidade: cidade,
+                genero: genero,
+                altura: altura,
+                peso: peso,
+                descricao: descricao,
+                pix: pix,
+                dinheiro: dinheiro,
+                cartaoCredito: cartaoCredito,
+                cartaoDebito: cartaoDebito,
+                servicosNormais: servicosNormaisObj,
+                servicosEspeciais: servicosEspeciaisObj
+            });
+            console.log('Produto criado com sucesso!');
+            res.status(200).json({ product: newProduct });
+        } else {
+            res.status(301).json({ error: "Não foi possível cadastrar o produto" });
+        }
+    } else {
+        res.status(400).json({ error: "Nenhum arquivo foi enviado" });
+    }
+});
+
+/*app.post('/produto', upload.single("avatar"), async (req, res) => {
     if (req.file) {
         const { idClient, nome, preco, idade, estado, cidade, genero,
             altura, peso, descricao, pix, dinheiro, cartaoCredito,
@@ -195,7 +285,7 @@ app.post('/produto', upload.single("avatar"), async (req, res) => {
     } else {
         res.status(400).json({ error: "Nenhum arquivo foi enviado" });
     }
-});
+});*/
 
 app.post('/acessar', async (req, res) => {
     const { email, senha } = req.body;
@@ -252,6 +342,7 @@ app.get("/:id", async (req, res) => {
     })
     res.status(200).json({ infoData: profileUser });
 });
+
 app.get("/success", (req, res) => {
     res.json({ id: idUser });
 });

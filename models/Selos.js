@@ -20,7 +20,15 @@ const Selos = conn.define("selos", {
     }
 })
 Selos.belongsTo(Client, { foreignKey: 'id' });
-Selos.sync()
+// Exemplo de como remover a restrição de chave estrangeira na tabela selos
+Selos.destroy({ where: { /* Condição para encontrar os registros que fazem referência a clients */ } })
     .then(() => {
-        console.log(`Tabela Selos foi criada com sucesso!`);
-    }).catch((error) => console.error(`Não deu para criar a tabela Selos por causa disso. Error: ${error}`))
+        // Após a remoção dos dados, tente criar a tabela selos novamente
+        Selos.sync({ force: true })
+            .then(() => {
+                console.log(`Tabela Selos foi criada com sucesso!`);
+            })
+            .catch((error) => console.error(`Não foi possível criar a tabela Selos: ${error}`));
+    })
+    .catch((error) => console.error(`Erro ao remover os dados da tabela Selos: ${error}`));
+module.exports = Selos;
