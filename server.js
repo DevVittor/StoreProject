@@ -1,6 +1,6 @@
 require('dotenv').config();
 require('./database/conn');
-const express = require('express');
+const express = require("express");
 const stripe = require("stripe")(process.env.STRIPE);
 const app = express();
 const bcrypt = require('bcrypt');
@@ -46,20 +46,26 @@ app.disable("x-powered-by");
 app.get("/", async (req, res) => {
     const ordem = req.query.ordem;
     const busca = req.query.inputBusca;
+    const precoMin = req.query.precoMin;
+    const precoMax = req.query.precoMax;
+
     try {
         let whereClause = {}; // Inicializa um objeto vazio para a cláusula WHERE
 
-        // Se houver uma busca por nome, configura a cláusula WHERE para filtrar pelo nome
         if (busca && busca !== 'undefined' && busca.trim() !== "") {
-            whereClause = {
-                [Op.or]: [
-                    { nome: { [Op.like]: `%${busca}%` } },
-                    { preco: { [Op.like]: `%${busca}%` } },
-                    { estado: { [Op.like]: `%${busca}%` } }
-                ]
-            };
-        } else {
-            whereClause = {};
+            whereClause[Op.or] = [
+                { nome: { [Op.like]: `%${busca}%` } },
+                { preco: { [Op.like]: `%${busca}%` } },
+                { estado: { [Op.like]: `%${busca}%` } }
+            ];
+        }
+
+        if (precoMin && precoMax) {
+            // Lógica para filtrar por faixa de preço
+            // Use whereClause[Op.and] se precisar de condições conjuntas (AND)
+            whereClause[Op.or] = [
+                { preco: { [Op.between]: [precoMin, precoMax] } }
+            ];
         }
 
         const cardProduct = await Product.findAll({
