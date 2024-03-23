@@ -10,12 +10,11 @@ const Client = require('./models/Client');
 const Product = require('./models/Products');
 const jwt = require('jsonwebtoken');
 const multer = require('multer');
-const upload = require("./config/multer");
+const upload = require("./config/multer");2
 const sharp = require("sharp");
 const fs = require("fs");
 const bodyParser = require("body-parser");
 const removeAccents = require('remove-accents');
-//const Jimp = require("jimp");
 const { Op } = require('sequelize');
 
 //const productRoutes = require("./routes/ProductRoutes");
@@ -162,30 +161,7 @@ app.post('/produto', upload.single("avatar"), async (req, res) => {
 
         const servicosNormaisObj = { anal, boquete, beijo };
         const servicosEspeciaisObj = { massagem, chuvaDourada };
-
-        /*//Inicio do Jimp
-        const imagem = await Jimp.read(`upload/${imgName}`);
-        const marcaDagua = await Jimp.read(`public/marca.png`);
-        marcaDagua.opacity(1); // Ajuste a opacidade conforme necessário
-        marcaDagua.resize(256, 256);
-        // Obter as dimensões da imagem principal e da marca d'água
-        const imagemWidth = imagem.bitmap.width;
-        const imagemHeight = imagem.bitmap.height;
-        const marcaWidth = marcaDagua.bitmap.width;
-        const marcaHeight = marcaDagua.bitmap.height;
-
-        // Definir as coordenadas para o canto inferior direito
-        const coordenadaX = imagemWidth - marcaWidth - 10; // Ajuste os valores de margem conforme desejado
-        const coordenadaY = imagemHeight - marcaHeight - 10; // Ajuste os valores de margem conforme desejado
-
-        imagem.composite(marcaDagua, coordenadaX, coordenadaY, {
-            mode: Jimp.BLEND_SOURCE_OVER,
-        });
-        await imagem.writeAsync(`upload/${imgName}`);*/
-        //Fim do Jimp
-        // Remove acentos e mantém apenas caracteres alfanuméricos no nome
         const nomeArquivo = removeAccents(nome).replace(/[^a-zA-Z0-9]+/g, '_');
-        // Adiciona um carimbo de data e a extensão .webp ao nome do arquivo
         const convertedImgName = `${nomeArquivo}_${Date.now()}.webp`;
         await sharp(`upload/${imgName}`).resize({ width: 600, fit: 'cover', position: 'center' }).toFile(`upload/${convertedImgName}`);
         fs.unlinkSync(`upload/${imgName}`);
